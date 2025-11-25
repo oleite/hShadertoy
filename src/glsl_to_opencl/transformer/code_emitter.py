@@ -163,6 +163,18 @@ class CodeEmitter:
         args = ', '.join(self.emit(arg) for arg in node.arguments)
         return f"({node.type_name})({args})"
 
+    def emit_ArrayInitializer(self, node: IR.ArrayInitializer) -> str:
+        """
+        Emit array initializer with curly braces.
+
+        Examples:
+            {0.0f}
+            {(float3)(0.0f)}
+            {1.0f, 2.0f, 3.0f}
+        """
+        elements = ', '.join(self.emit(elem) for elem in node.elements)
+        return f"{{{elements}}}"
+
     def emit_MemberAccess(self, node: IR.MemberAccess) -> str:
         """Emit member access (swizzling)."""
         base = self.emit(node.base)

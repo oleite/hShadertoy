@@ -1,17 +1,14 @@
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     float foo; // Undefined float variable
-    int ifoo;
-    vec3 bar; // Undefined vec3 variable
-    ivec2 ifoo2;
-
+    vec2 bar; // Undefined vec3 variable
     float x, y, z; // Declares three float variables: x, y, and z
-    int a = 10, b = 20; // Declares and initializes two int variables: a and b
+    int a = 10, b, c; // Declares and initializes two int variables: a and b
     vec3 position, normal, tangent; // Declares three vec3 variables
-    
-    x = float(b);
-    y = 0.5;
-    z = 0.0;
+
+    //arrays
+    float myarray1[5];
+    vec3 myarray3[5];
     
     vec3 col = vec3(x, y, z) + normal;
 

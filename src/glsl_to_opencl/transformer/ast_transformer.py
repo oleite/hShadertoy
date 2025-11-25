@@ -430,6 +430,171 @@ class ASTTransformer:
             return False
         return type_name in ['float', 'int', 'uint', 'bool']
 
+    def _create_zero_initializer(self, glsl_type: str, opencl_type: str) -> Optional[IR.TransformedNode]:
+        """
+        Create a zero initializer for undefined variables to match GLSL semantics.
+
+        GLSL implicitly initializes undefined variables to zero, while OpenCL
+        leaves them undefined. This method creates appropriate zero initializers
+        for scalar, vector, and matrix types to match GLSL behavior.
+
+        Args:
+            glsl_type: GLSL type name (e.g., 'float', 'vec3', 'mat2')
+            opencl_type: OpenCL type name (e.g., 'float', 'float3', 'matrix2x2')
+
+        Returns:
+            IR node representing zero initializer, or None for unsupported types
+
+        Examples:
+            float -> IR.FloatLiteral("0.0f")
+            int -> IR.IntLiteral("0")
+            vec3 -> IR.TypeConstructor("float3", [IR.FloatLiteral("0.0f")])
+            mat2 -> IR.CallExpression("GLSL_matrix2x2_diagonal", [IR.FloatLiteral("0.0f")])
+        """
+        # Scalar float
+        if glsl_type == 'float':
+            return IR.FloatLiteral(
+                value="0.0f",
+                glsl_type=TYPE_NAME_MAP['float'],
+                source_location=None
+            )
+
+        # Scalar int
+        if glsl_type == 'int':
+            return IR.IntLiteral(
+                value="0",
+                glsl_type=TYPE_NAME_MAP['int'],
+                source_location=None
+            )
+
+        # Float vectors (vec2, vec3, vec4)
+        if glsl_type in ['vec2', 'vec3', 'vec4']:
+            return IR.TypeConstructor(
+                type_name=opencl_type,  # float2, float3, float4
+                arguments=[IR.FloatLiteral(value="0.0f", glsl_type=TYPE_NAME_MAP['float'], source_location=None)],
+                glsl_type=TYPE_NAME_MAP[glsl_type],
+                source_location=None
+            )
+
+        # Integer vectors (ivec2, ivec3, ivec4)
+        if glsl_type in ['ivec2', 'ivec3', 'ivec4']:
+            return IR.TypeConstructor(
+                type_name=opencl_type,  # int2, int3, int4
+                arguments=[IR.IntLiteral(value="0", glsl_type=TYPE_NAME_MAP['int'], source_location=None)],
+                glsl_type=TYPE_NAME_MAP[glsl_type],
+                source_location=None
+            )
+
+        # Matrices (mat2, mat3, mat4) - use diagonal constructor with zero
+        if glsl_type == 'mat2':
+            return IR.CallExpression(
+                function='GLSL_matrix2x2_diagonal',
+                arguments=[IR.FloatLiteral(value="0.0f", glsl_type=TYPE_NAME_MAP['float'], source_location=None)],
+                glsl_type=TYPE_NAME_MAP['mat2'],
+                source_location=None
+            )
+
+        if glsl_type == 'mat3':
+            return IR.CallExpression(
+                function='GLSL_matrix3x3_diagonal',
+                arguments=[IR.FloatLiteral(value="0.0f", glsl_type=TYPE_NAME_MAP['float'], source_location=None)],
+                glsl_type=TYPE_NAME_MAP['mat3'],
+                source_location=None
+            )
+
+        if glsl_type == 'mat4':
+            return IR.CallExpression(
+                function='GLSL_matrix4x4_diagonal',
+                arguments=[IR.FloatLiteral(value="0.0f", glsl_type=TYPE_NAME_MAP['float'], source_location=None)],
+                glsl_type=TYPE_NAME_MAP['mat4'],
+                source_location=None
+            )
+
+        # For other types (uint, bool, uvec*, bvec*, structs), return None
+        # These types may have different initialization semantics or are less common
+        return None
+
+    def _infer_swizzle_type(self, base_type: str, swizzle: str) -> Optional[GLSLType]:
+        """
+        Infer the result type of a swizzle operation on a vector.
+
+        Swizzles extract components from vectors using patterns like:
+        - Coordinate: x, y, z, w (or any combination: xy, xyz, xyzw, etc.)
+        - Color: r, g, b, a (or any combination: rg, rgb, rgba, etc.)
+
+        Args:
+            base_type: Base vector type (e.g., 'vec3', 'float3', 'ivec2')
+            swizzle: Swizzle pattern (e.g., 'xy', 'xyz', 'rg')
+
+        Returns:
+            GLSLType of the swizzled result, or None if invalid
+
+        Examples:
+            vec3, 'xy' -> vec2
+            vec4, 'xyz' -> vec3
+            ivec3, 'xy' -> ivec2
+            vec2, 'x' -> float
+        """
+        from ..analyzer.type_checker import TYPE_NAME_MAP
+
+        if not base_type or not swizzle:
+            return None
+
+        # Map OpenCL type names to GLSL for easier handling
+        opencl_to_glsl = {
+            'float2': 'vec2', 'float3': 'vec3', 'float4': 'vec4',
+            'int2': 'ivec2', 'int3': 'ivec3', 'int4': 'ivec4',
+            'uint2': 'uvec2', 'uint3': 'uvec3', 'uint4': 'uvec4'
+        }
+        glsl_base = opencl_to_glsl.get(base_type, base_type)
+
+        # Check if base is a vector type
+        if not self._is_vector_type(glsl_base):
+            return None
+
+        # Validate swizzle pattern
+        # GLSL allows xyzw (coordinate) or rgba (color), but not mixed
+        coord_chars = set('xyzw')
+        color_chars = set('rgba')
+        swizzle_chars = set(swizzle)
+
+        is_coord = swizzle_chars.issubset(coord_chars)
+        is_color = swizzle_chars.issubset(color_chars)
+
+        if not (is_coord or is_color):
+            # Invalid swizzle pattern (mixed or invalid characters)
+            return None
+
+        # Determine result type based on swizzle length
+        swizzle_len = len(swizzle)
+
+        # Extract base type family (vec, ivec, uvec, bvec)
+        if glsl_base.startswith('vec'):
+            base_family = 'vec'
+            scalar_type = 'float'
+        elif glsl_base.startswith('ivec'):
+            base_family = 'ivec'
+            scalar_type = 'int'
+        elif glsl_base.startswith('uvec'):
+            base_family = 'uvec'
+            scalar_type = 'uint'
+        elif glsl_base.startswith('bvec'):
+            base_family = 'bvec'
+            scalar_type = 'bool'
+        else:
+            return None
+
+        # Single component -> scalar
+        if swizzle_len == 1:
+            return TYPE_NAME_MAP.get(scalar_type)
+
+        # Multiple components -> vector of appropriate dimension
+        if swizzle_len in [2, 3, 4]:
+            result_type = f'{base_family}{swizzle_len}'
+            return TYPE_NAME_MAP.get(result_type)
+
+        return None
+
     def _infer_mul_result_type(self, left_type: str, right_type: str) -> Optional[GLSLType]:
         """
         Infer the result type of matrix multiplication.
@@ -1047,6 +1212,15 @@ class ASTTransformer:
                             field_type = fields[field]
                             glsl_type = TYPE_NAME_MAP.get(field_type)
 
+        # If type not inferred yet, check for vector swizzle operations
+        # This enables matrix operations on swizzled vector components
+        # Examples: foo.xy * M2, V3.xyz * M3, V4.xy *= M2
+        if glsl_type is None:
+            base_type = self._get_type_name(base)
+            if base_type and self._is_vector_type(base_type):
+                # Try to infer swizzle type
+                glsl_type = self._infer_swizzle_type(base_type, field)
+
         return IR.MemberAccess(
             base=base,
             member=field,
@@ -1344,10 +1518,24 @@ class ASTTransformer:
             if base_name:
                 self.local_types[base_name] = glsl_type
 
-            # Transform initializer if present
+            # Transform initializer if present, or create zero initializer for undefined variables
             initializer = None
             if initializer_node:
                 initializer = self._transform_node(initializer_node)
+            else:
+                # No explicit initializer - create zero initializer to match GLSL semantics
+                # GLSL implicitly initializes undefined variables to zero, while OpenCL
+                # leaves them undefined. This creates appropriate zero initializers.
+                initializer = self._create_zero_initializer(glsl_type, opencl_type)
+
+                # For arrays, wrap the initializer in ArrayInitializer with curly braces
+                # OpenCL requires array initializers to be in the form: type name[size] = {...}
+                if initializer and '[' in var_name:
+                    initializer = IR.ArrayInitializer(
+                        elements=[initializer],
+                        glsl_type=None,
+                        source_location=None
+                    )
 
             # Create Declaration node (without type_name for DeclarationList)
             declarations.append(IR.Declaration(

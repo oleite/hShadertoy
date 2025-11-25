@@ -263,6 +263,24 @@ class OpenCLEmitter:
         args = ', '.join(self.emit(arg) for arg in node.arguments)
         return f"({node.type_name})({args})"
 
+    def emit_ArrayInitializer(self, node: IR.ArrayInitializer) -> str:
+        """
+        Emit array initializer with curly braces.
+
+        Args:
+            node: ArrayInitializer node
+
+        Returns:
+            Array initializer code in the form {element1, element2, ...}
+
+        Examples:
+            {0.0f}
+            {(float3)(0.0f)}
+            {1.0f, 2.0f, 3.0f}
+        """
+        elements = ', '.join(self.emit(elem) for elem in node.elements)
+        return f"{{{elements}}}"
+
     def emit_MemberAccess(self, node: IR.MemberAccess) -> str:
         """
         Emit member access (swizzling, struct fields).
@@ -358,7 +376,9 @@ class OpenCLEmitter:
             Declaration code
         """
         # Standard declaration for all types
-        result = f"{self.indent()}{node.type_name} {node.name}"
+        # Emit qualifiers if present
+        qualifier_str = ' '.join(node.qualifiers) + ' ' if node.qualifiers else ''
+        result = f"{self.indent()}{qualifier_str}{node.type_name} {node.name}"
         if node.initializer:
             init = self.emit(node.initializer)
             result += f" = {init}"
@@ -408,7 +428,9 @@ class OpenCLEmitter:
             declarator_parts.append(part)
 
         # Emit as single line: type name1, name2, name3;
-        result = f"{self.indent()}{node.type_name} {', '.join(declarator_parts)};\n"
+        # Emit qualifiers if present
+        qualifier_str = ' '.join(node.qualifiers) + ' ' if node.qualifiers else ''
+        result = f"{self.indent()}{qualifier_str}{node.type_name} {', '.join(declarator_parts)};\n"
         return result
 
     def _get_node_type(self, node: IR.TransformedNode) -> Optional[str]:

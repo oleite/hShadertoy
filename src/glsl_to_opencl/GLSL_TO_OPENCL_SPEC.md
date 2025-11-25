@@ -558,29 +558,71 @@ do { ... } while (condition);
 
 ### 7. Variable Declarations
 
+**Undefined Variable Initialization (GLSL Semantics)**
+
+**CRITICAL:** GLSL implicitly zero-initializes undefined variables, while OpenCL leaves them undefined. The transpiler automatically adds zero initializers to match GLSL semantics.
+
+```glsl
+// GLSL
+float foo;       // Implicitly initialized to 0.0
+vec3 bar;        // Implicitly initialized to vec3(0.0)
+int x;           // Implicitly initialized to 0
+
+// OpenCL (transpiled)
+float foo = 0.0f;           // Explicit zero initialization
+float3 bar = (float3)(0.0f); // Explicit zero initialization
+int x = 0;                  // Explicit zero initialization
+```
+
 **Single Declaration**
 ```glsl
 // GLSL
-float x = 1.0;
-vec3 p;
+float x = 1.0;      // Explicit initializer (unchanged)
+vec3 p;             // No initializer (gets zero-init)
 
 // OpenCL
-float x = 1.0f;
-float3 p;
+float x = 1.0f;          // Explicit initializer preserved
+float3 p = (float3)(0.0f); // Zero initializer added
 ```
 
 **Comma-Separated Declarations**
 ```glsl
 // GLSL
-float x, y, z;
-int a = 10, b = 20;
-vec3 p, n, t;
+float x, y, z;                    // All undefined
+int a = 10, b = 20;               // All explicitly initialized
+vec3 p, n, t;                     // All undefined
+float a = 1.0, b, c = 3.0;        // Mixed (b undefined)
 
 // OpenCL
-float x, y, z;
-int a = 10, b = 20;
-float3 p, n, t;
+float x = 0.0f, y = 0.0f, z = 0.0f;             // Zero-init added
+int a = 10, b = 20;                             // Unchanged
+float3 p = (float3)(0.0f), n = (float3)(0.0f), t = (float3)(0.0f); // Zero-init added
+float a = 1.0f, b = 0.0f, c = 3.0f;             // b gets zero-init
 ```
+
+**Matrix Types**
+```glsl
+// GLSL
+mat2 M1;
+mat3 M2, M3;
+mat4 M4 = mat4(1.0);
+
+// OpenCL
+matrix2x2 M1 = GLSL_matrix2x2_diagonal(0.0f);  // Zero matrix
+matrix3x3 M2 = GLSL_matrix3x3_diagonal(0.0f), M3 = GLSL_matrix3x3_diagonal(0.0f);
+matrix4x4 M4 = GLSL_matrix4x4_diagonal(1.0f);  // Explicit initializer preserved
+```
+
+**Supported Types for Auto-Initialization:**
+- Scalars: `float`, `int`
+- Float vectors: `vec2`, `vec3`, `vec4`
+- Integer vectors: `ivec2`, `ivec3`, `ivec4`
+- Matrices: `mat2`, `mat3`, `mat4`
+
+**Not Auto-Initialized:**
+- `bool`, `uint`, `uvec*`, `bvec*` (less common, different semantics)
+- User-defined structs (require explicit constructors)
+- Arrays (require explicit initialization syntax)
 
 **Const Qualifier**
 ```glsl

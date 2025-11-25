@@ -113,6 +113,10 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     op8 *= M4;
     op8 = V4 * foobar(V3, 3.14);
 
+    // operations isolated vector components
+    V2 = V3.xy * M2;
+    V4.xy *= M2;
+  
 
     // common matrix functions
     mat2 xf1 = transpose(M2);

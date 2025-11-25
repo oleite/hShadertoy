@@ -202,6 +202,22 @@ class TypeConstructor(TransformedNode):
 
 
 @dataclass(frozen=True)
+class ArrayInitializer(TransformedNode):
+    """
+    Array initializer with curly braces.
+
+    Examples:
+        {0.0f}
+        {(float3)(0.0f)}
+        {1.0f, 2.0f, 3.0f}
+
+    Note: In OpenCL, array initializers must be wrapped in curly braces.
+    This is used for zero-initializing undefined arrays to match GLSL semantics.
+    """
+    elements: List[TransformedNode] = None
+
+
+@dataclass(frozen=True)
 class MemberAccess(TransformedNode):
     """
     Member access (swizzling or struct field).

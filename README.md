@@ -2,7 +2,7 @@
 
 ## Installation
 
-1. Download and unpack hShadertoy to a local directory (eg: `C:\dev\hShadertoy` )
+1. Download and unpack hShadertoy to a local directory (eg: `C:/dev/hShadertoy` )
 
 2. **Install tree-sitter**
 `pip install tree-sitter`
@@ -10,7 +10,7 @@
 3. **Install tree-sitter-glsl**
 `pip install tree-sitter-glsl`
 
-4. Copy `houdini\packages\hShadertoy.json` to your package directory (eg $HOUDINI_USER_PREF_DIR/packages )
+4. Copy `houdini/packages/hShadertoy.json` to your package directory (eg $HOUDINI_USER_PREF_DIR/packages )
 
 5. Edit `hShadertoy.json` and set the following env variables:
 
@@ -23,12 +23,12 @@ Get your API key: https://www.shadertoy.com/howto
 
 **Note:** Shadertoy API is corrently blocked. API keys do not work.
 
+6. Open Editor in hShadertoy shelf
+
 ### Known limitations
 - Shadertoy global uniforms (iChannel#, iTime.. ) used outside mainImage() will be transpiled as undefined variables and produce incomplete shader
 - dFdx(), dFdy() and fwidth() are just passthrough functions. (not supported in OpenCL)
-- Expected **fragColor** and **fragCoord** in mainImage(). Custom names will fail. This will be fixed at some point in future
-- all matrix functions and operations are still in dev and prone to fail.
-- void() functions still need polishing
+- Expected **fragColor** and **fragCoord** in mainImage(). Custom names will fail. This will be fixed at some point in future. Prob simple RegEx parsing in transpile_glsl.py
 
 ## Development
 
@@ -44,21 +44,30 @@ pylint>=3.0.0
 pyopencl>=2025.2
 ```
 
+### Pipeline
+1. `houdini/toolbar/hShadertoy.shelf`
+2. `houdini/scripts/python/hshadertoy/gui/editor.py`
+3. `houdini/scripts/python/hshadertoy/builder/builder.py`
+4. `houdini/scripts/python/hshadertoy/transpiler/transpile_glsl.py`
+5. `src/glsl_to_opencl`
+6. `houdini/otls/hShadertoy.hda` - `hShadertoy::shadertoy`
+7. `magic!`
+
 ### GLSL to OpenCL specification:
-- `src\glsl_to_opencl\GLSL_TO_OPENCL_SPEC.md`
+- `src/glsl_to_opencl/GLSL_TO_OPENCL_SPEC.md`
 
 ### Unit Tests
 - Location: `tests/unit/`
 - Coverage: All transformation features
 - Run: `python -m pytest tests/unit/ -v`
 
-### Full Transpilation Tests for Houdini Compilation Test
+### Full Transpilation Test
 - `python tests/transpile.py tests/../<file>.glsl`
 - outputs `<file>.header.cl` and `<file>.kernel.cl` for compilecl.py
 
-### OpenCL compile Test
+### OpenCL Compilation Test
 - Location: `tests/shaders/`
-- Configure: `tests\build_options.json` 
+- Configure: `tests/build_options.json` 
   You can extract full list of build options by setting `HOUDINI_OCL_REPORT_BUILD_LOGS = 2` in `houdini.env`. hShadertoy HDA OpenCL node will log build options specific to your environment (more info: https://www.sidefx.com/docs/houdini/ref/env.html)
 - Run: `python tests/compilecl.py --header <file>.header.cl <file>.kernel.cl`
 
@@ -66,6 +75,10 @@ pyopencl>=2025.2
 ## Known BUGS
 - undefined variables (glsl undefined variables get 0 assigned, opencl stays undefined)
 - matrix operations not fully covered
+- and lots others
+- all matrix functions and operations are still in dev and prone to fail.
+- void() functions still need polishing (foo.x needs to become foo[0] etc)
+
 
 ## TODO
 
