@@ -20,7 +20,8 @@
     { "SHADERTOY_API_KEY": "YOUR_API_KEY"},
 ```
 Get your API key: https://www.shadertoy.com/howto
-Note: Shadertoy API is corrently blocked. API keys do not work.
+
+**Note:** Shadertoy API is corrently blocked. API keys do not work.
 
 ### Known limitations
 - Shadertoy global uniforms (iChannel#, iTime.. ) used outside mainImage() will be transpiled as undefined variables and produce incomplete shader
@@ -57,7 +58,6 @@ pyopencl>=2025.2
 
 ### OpenCL compile Test
 - Location: `tests/shaders/`
-- Verify: OpenCL compilation succeeds
 - Configure: `tests\build_options.json` 
   You can extract full list of build options by setting `HOUDINI_OCL_REPORT_BUILD_LOGS = 2` in `houdini.env`. hShadertoy HDA OpenCL node will log build options specific to your environment (more info: https://www.sidefx.com/docs/houdini/ref/env.html)
 - Run: `python tests/compilecl.py --header <file>.header.cl <file>.kernel.cl`
@@ -79,7 +79,7 @@ pyopencl>=2025.2
 - fix video/volume parameter mismatch
 
 ### HDA
-- optimize. currently evaluates the full graph even if buffer shaders are not used.
+- Optimize. currently evaluates the full graph even if buffer shaders are not used.
 - Pack remaining cubemaps
 - Pack volumes
 
