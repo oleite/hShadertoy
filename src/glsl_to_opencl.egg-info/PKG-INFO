@@ -1,0 +1,23 @@
+Metadata-Version: 2.4
+Name: glsl-to-opencl
+Version: 0.1.0.dev0
+Summary: GLSL ES 3.0 to OpenCL 1.2 transpiler for Houdini
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: tree-sitter>=0.25.0
+Requires-Dist: tree-sitter-glsl>=0.2.0
+Requires-Dist: numpy>=2.3.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=7.0.0; extra == "dev"
+Requires-Dist: black>=24.0.0; extra == "dev"
+Requires-Dist: pylint>=3.0.0; extra == "dev"
+Requires-Dist: pyopencl>=2025.2; extra == "dev"
+Dynamic: license-file
+
+# Shadertoy to Houdini 21 Copernicus importer
+placeholder user documentation
+
+Project in deveopment phase!
+Refer to docs\PROJECT_SPEC.md

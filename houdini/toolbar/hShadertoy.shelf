@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+  <!-- This file contains definitions of shelves, toolbars, and tools.
+ It should not be hand-edited when it is being used by the application.
+ Note, that two definitions of the same element are not allowed in
+ a single file. -->
+
+  <toolshelf name="hShadertoy" label="hShadertoy">
+    <memberTool name="templateSave"/>
+    <memberTool name="templateLoad"/>
+    <memberTool name="editor"/>
+    <memberTool name="shadertoy0"/>
+    <memberTool name="cubemappack_hda"/>
+  </toolshelf>
+
+  <tool name="templateLoad" label="Template Load" icon="TOP_jsoninput">
+    <script scriptType="python"><![CDATA[# load node from file
+import hshadertoy.tools.template_load as _template_load
+
+# force reload while in dev
+# remove for release
+import importlib
+importlib.reload(_template_load)
+
+_template_load.run(kwargs)]]></script>
+  </tool>
+
+  <tool name="editor" label="Editor" icon="VOP_genericshader">
+    <script scriptType="python"><![CDATA[# load node from file
+import hshadertoy.gui.editor as _editor
+
+# force reload while in dev
+# remove for release
+import importlib
+importlib.reload(_editor)
+
+_editor.run()]]></script>
+  </tool>
+
+  <tool name="templateSave" label="Template Save" icon="TOP_jsonoutput">
+    <script scriptType="python"><![CDATA[# Save selected node parameters to file (JSON)
+import hshadertoy.tools.template_save as _save
+
+# force reload while in dev
+# remove for release
+import importlib
+importlib.reload(_save)
+
+_save.run(kwargs)]]></script>
+  </tool>
+
+  <tool name="ichannel_update" label="iChannel Update" icon="PLASMA_App">
+    <script scriptType="python"><![CDATA["""
+Shelf Tool Script: Update iChannel Node Parameter References
+
+Select iChannel nodes (e.g., bufferA_iChannel0, image_iChannel1, cubeA_iChannel3)
+and run this script to automatically set up parameter expressions linking
+them to their corresponding parent HDA parameters.
+
+Naming convention expected:
+- Node name: <renderpass>_iChannel<channel_idx>
+- Examples: bufferA_iChannel0, bufferB_iChannel2, image_iChannel1, cubeA_iChannel3
+"""
+
+import hou
+import re
+
+
+def parse_node_name(node_name):
+    """
+    Parse iChannel node name to extract renderpass and channel index.
+    
+    Expected format: <renderpass>_iChannel<N>
+    Examples:
+        - "bufferA_iChannel0" -> ("bufferA", 0)
+        - "image_iChannel2" -> ("image", 2)
+        - "cubeA_iChannel3" -> ("cubeA", 3)
+    
+    Returns:
+        tuple: (renderpass_name, channel_index) or (None, None) if parsing fails
+    """
+    # Pattern: <anything>_iChannel<digit>
+    match = re.match(r'^(.+)_iChannel(\d)$', node_name)
+    if match:
+        renderpass = match.group(1)
+        channel_idx = int(match.group(2))
+        return (renderpass, channel_idx)
+    return (None, None)
+
+
+def get_renderpass_index(renderpass_name):
+    """
+    Map renderpass name to its index (rpN format used in parameter names).
+    
+    Args:
+        renderpass_name: Name like "image", "bufferA", "bufferB", etc.
+    
+    Returns:
+        int or None: Renderpass index (0-5) or None if not recognized
+    """
+    mapping = {
+        "image": 0,
+        "buffera": 1,
+        "buffer_a": 1,
+        "bufferb": 2,
+        "buffer_b": 2,
+        "bufferc": 3,
+        "buffer_c": 3,
+        "bufferd": 4,
+        "buffer_d": 4,
+        "cubea": 5,
+        "cube_a": 5,
+    }
+    return mapping.get(renderpass_name.lower().replace(" ", ""))
+
+
+def update_ichannel_node(node):
+    """
+    Update a single iChannel node's parameters to reference parent HDA parameters.
+    
+    Args:
+        node: hou.Node - The iChannel node to update
+    
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    node_name = node.name()
+    renderpass_name, channel_idx = parse_node_name(node_name)
+    
+    if renderpass_name is None or channel_idx is None:
+        return (False, f"Could not parse node name: {node_name}")
+    
+    rp_idx = get_renderpass_index(renderpass_name)
+    if rp_idx is None:
+        return (False, f"Unknown renderpass: {renderpass_name}")
+    
+    # Define parameter mapping: node_parm -> parent_parm_expression
+    param_map = {
+        "folder": f"ch(\"../folder_rp{rp_idx}_ch{channel_idx}\")",
+        "asset0": f"ch(\"../asset0_rp{rp_idx}_ch{channel_idx}\")",
+        "asset1": f"ch(\"../asset1_rp{rp_idx}_ch{channel_idx}\")",
+        "asset2": f"ch(\"../asset2_rp{rp_idx}_ch{channel_idx}\")",
+        "asset3": f"ch(\"../asset3_rp{rp_idx}_ch{channel_idx}\")",
+        "asset4": f"ch(\"../asset4_rp{rp_idx}_ch{channel_idx}\")",
+        "asset5": f"ch(\"../asset5_rp{rp_idx}_ch{channel_idx}\")",
+        "filter": f"ch(\"../filter_rp{rp_idx}_ch{channel_idx}\")",
+        "wrap": f"ch(\"../wrap_rp{rp_idx}_ch{channel_idx}\")",
+        "vflip": f"ch(\"../vflip_rp{rp_idx}_ch{channel_idx}\")",
+    }
+    
+    # Apply expressions to each parameter
+    updated = []
+    errors = []
+    
+    for parm_name, expression in param_map.items():
+        parm = node.parm(parm_name)
+        if parm is None:
+            errors.append(f"Parameter '{parm_name}' not found")
+            continue
+        
+        try:
+            # Set the expression (using Hscript language)
+            parm.setExpression(expression, language=hou.exprLanguage.Hscript)
+            updated.append(parm_name)
+        except Exception as e:
+            errors.append(f"Failed to set '{parm_name}': {str(e)}")
+    
+    if errors:
+        return (False, f"Updated {len(updated)} params, errors: {', '.join(errors)}")
+    
+    return (True, f"Updated {len(updated)} parameters (rp{rp_idx}_ch{channel_idx})")
+
+
+def main():
+    """
+    Main function - process all selected iChannel nodes.
+    """
+    # Get selected nodes
+    selected = hou.selectedNodes()
+    
+    if not selected:
+        hou.ui.displayMessage(
+            "No nodes selected.\n\n"
+            "Select one or more iChannel nodes (e.g., bufferA_iChannel0, image_iChannel2)\n"
+            "and run this script to set up parameter references.",
+            title="Update iChannel References"
+        )
+        return
+    
+    # Filter for valid iChannel nodes
+    ichannel_nodes = []
+    skipped = []
+    
+    for node in selected:
+        if "_iChannel" in node.name():
+            ichannel_nodes.append(node)
+        else:
+            skipped.append(node.name())
+    
+    if not ichannel_nodes:
+        hou.ui.displayMessage(
+            f"No iChannel nodes found in selection.\n\n"
+            f"Selected nodes: {', '.join([n.name() for n in selected])}\n\n"
+            f"Expected names like: bufferA_iChannel0, image_iChannel2, etc.",
+            title="No iChannel Nodes"
+        )
+        return
+    
+    # Process each iChannel node
+    results = []
+    success_count = 0
+    error_count = 0
+    
+    for node in ichannel_nodes:
+        success, message = update_ichannel_node(node)
+        results.append(f"{node.name()}: {message}")
+        
+        if success:
+            success_count += 1
+        else:
+            error_count += 1
+    
+    # Display results
+    result_text = "\n".join(results)
+    
+    if skipped:
+        result_text += f"\n\nSkipped non-iChannel nodes:\n- " + "\n- ".join(skipped)
+    
+    title = "Update Complete"
+    if error_count > 0:
+        title = f"Update Complete ({error_count} errors)"
+    
+    hou.ui.displayMessage(
+        f"Processed {len(ichannel_nodes)} iChannel node(s):\n\n{result_text}",
+        title=title,
+        severity=hou.severityType.ImportantMessage if error_count > 0 else hou.severityType.Message
+    )
+
+
+main()]]></script>
+  </tool>
+
+  <tool name="shadertoy0" label="Shadertoy HDA" icon="PLASMA_App">
+    <toolMenuContext name="network">
+      <contextNetType>COP</contextNetType>
+    </toolMenuContext>
+    <script scriptType="python"><![CDATA[import hou
+
+# Get the current network editor context (where the user clicked the shelf tool)
+pane = hou.ui.paneTabUnderCursor()
+if not pane or not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+
+if pane:
+    parent = pane.pwd()  # get current network path (e.g., /img, /obj/geo1/copnet1, etc.)
+    node = parent.createNode("hShadertoy::shadertoy")
+    node.moveToGoodPosition()
+    node.setSelected(True, clear_all_selected=True)
+else:
+    hou.ui.displayMessage("No active network editor found.")]]></script>
+  </tool>
+
+  <tool name="shadertoy" label="Shadertoy" icon="PLASMA_App">
+    <toolMenuContext name="network">
+      <contextNetType>COP</contextNetType>
+    </toolMenuContext>
+    <script scriptType="python"><![CDATA[import hou
+
+# Get the current network editor context (where the user clicked the shelf tool)
+pane = hou.ui.paneTabUnderCursor()
+if not pane or not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+
+if pane:
+    parent = pane.pwd()  # get current network path (e.g., /img, /obj/geo1/copnet1, etc.)
+    node = parent.createNode("hShadertoy::shadertoy")
+    node.moveToGoodPosition()
+    node.setSelected(True, clear_all_selected=True)
+else:
+    hou.ui.displayMessage("No active network editor found.")]]></script>
+  </tool>
+
+  <tool name="test0" label="Test" icon="PLASMA_App">
+    <script scriptType="python"><![CDATA[import hou
+
+def builder(payload="@KERNEL{@fragColor.set(0.5f);}", mode="template"):
+
+    # Ensure /obj exists
+    obj = hou.node("/obj")
+    # Create a COP network under /obj
+    copnet = obj.createNode("copnet", "copnet1")
+    # Create the hShadertoy node inside the COP network
+    node = copnet.createNode("hShadertoy::shadertoy", "hshadertoy")
+    
+    node.parm("code_rp0").set(payload)
+
+builder()]]></script>
+  </tool>
+
+  <tool name="test" label="Test" icon="PLASMA_App">
+    <toolMenuContext name="network">
+      <contextNetType>COP</contextNetType>
+    </toolMenuContext>
+    <script scriptType="python"><![CDATA[import hou
+
+def builder():
+
+    # Ensure /obj exists
+    obj = hou.node("/obj")
+    # Create a COP network under /obj
+    copnet = obj.createNode("copnet", "copnet1")
+    # Create the hShadertoy node inside the COP network
+    node = copnet.createNode("hShadertoy::shadertoy", "hshadertoy")
+    
+    return node
+    
+builder()]]></script>
+  </tool>
+
+  <tool name="cubemappack_hda" label="Cubemap Pack HDA" icon="PLASMA_App">
+    <script scriptType="python"><![CDATA[import hou
+
+# Get the current network editor context (where the user clicked the shelf tool)
+pane = hou.ui.paneTabUnderCursor()
+if not pane or not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+
+if pane:
+    parent = pane.pwd()  # get current network path (e.g., /img, /obj/geo1/copnet1, etc.)
+    node = parent.createNode("hShadertoy::cubemappack")
+    node.moveToGoodPosition()
+    node.setSelected(True, clear_all_selected=True)
+else:
+    hou.ui.displayMessage("No active network editor found.")]]></script>
+  </tool>
+</shelfDocument>

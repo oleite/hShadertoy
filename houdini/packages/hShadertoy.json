@@ -1,0 +1,15 @@
+{
+  "env": [
+    { "HSHADERTOY_ROOT": "" },
+    { "HSHADERTOY_HOUDINI": "" },
+    { "SHADERTOY_API_KEY": ""},
+    { "MEDIA_JSON_PATH": "$HSHADERTOY_ROOT/houdini/pic/media.json" },      
+    { "PYTHONPATH": { "value": "$HSHADERTOY_HOUDINI/scripts/python", "method": "append" } },
+    { "PYTHONPATH": { "value": "$HSHADERTOY_ROOT", "method": "append" } },
+    { "HOUDINI_OTLSCAN_PATH": { "value": "$HSHADERTOY_HOUDINI/otls", "method": "append" } },     
+    { "HOUDINI_OCL_PATH": { "value": "$HSHADERTOY_HOUDINI/ocl", "method": "append" } },
+    { "HOUDINI_TEXTURE_PATH": { "value": "$HSHADERTOY_HOUDINI/pic/named", "method": "append" } },
+    { "HOUDINI_TOOLBAR_PATH": { "value": "$HSHADERTOY_HOUDINI/toolbar", "method": "append" } }
+  ],
+  "enable": false
+}

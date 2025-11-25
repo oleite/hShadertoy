@@ -1,0 +1,19 @@
+{
+  "options": [
+    "-I C:/dev/hShadertoy/houdini/ocl/include",
+    "-I C:/PROGRA~1/SIDEEF~1/HOUDIN~1.440/houdini/ocl/include",
+    "-I C:/dev/hShadertoy/tests/ocl",
+    "-D __H_CPU__",
+    "-D __H_INTEL__",
+    "-DFILTER_BOX",
+    "-D_RUNOVER_LAYER=_bound_fragColor_layer",
+    "-DHAS_size_ref",
+    "-DALIGNED_size_ref",
+    "-DCONSTANT_size_ref",
+    "-D_bound_size_ref_border=IMX_WRAP",
+    "-D_bound_size_ref_storage=FLOAT32",
+    "-D_bound_size_ref_channels=1",
+    "-D_bound_fragColor_storage=FLOAT32",
+    "-D_bound_fragColor_channels=4"
+  ]
+}

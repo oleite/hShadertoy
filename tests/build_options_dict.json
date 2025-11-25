@@ -1,0 +1,24 @@
+{
+  "comment": "Alternative format: key-value pairs for defines",
+  "includes": {
+    "-I": [
+      "C:/dev/hShadertoy/houdini/ocl/include",
+      "C:/PROGRA~1/SIDEEF~1/HOUDIN~1.440/houdini/ocl/include",
+      "C:/dev/hShadertoy/tests/ocl"
+    ]
+  },
+  "defines": {
+    "__H_CPU__": true,
+    "__H_INTEL__": true,
+    "FILTER_BOX": true,
+    "_RUNOVER_LAYER": "_bound_fragColor_layer",
+    "HAS_size_ref": true,
+    "ALIGNED_size_ref": true,
+    "CONSTANT_size_ref": true,
+    "_bound_size_ref_border": "IMX_WRAP",
+    "_bound_size_ref_storage": "FLOAT32",
+    "_bound_size_ref_channels": 1,
+    "_bound_fragColor_storage": "FLOAT32",
+    "_bound_fragColor_channels": 4
+  }
+}

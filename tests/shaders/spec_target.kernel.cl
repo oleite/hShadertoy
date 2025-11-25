@@ -1,0 +1,176 @@
+// ---- SHADERTOY CODE BEGIN ----
+// Shadertoy void mainImage(...)
+// Normalized pixel coordinates (from 0 to 1)
+    float2 uv = fragCoord/iResolution.xy;
+
+    // types
+	bool t1= true;
+	int t2= 1;
+	uint t3 = 1u;
+	float t4= 1.0f;
+	float2 t5 = (float2)(0.0f, 0.0f);
+	float3 t6 = (float3)(0.f, 0.f, 0.f);
+	float4 t7 = (float4)(.0f, .0f, .0f, 1.000f);
+	int2 t8 = (int2)( true, false );
+	int3 t9 = (int3)( 0, 1, true );
+	int4 t10 = (int4)( 0, 1, false, false );
+	int2 t11 = (int2)(0, 1);
+	int3 t12 = (int3)( 0, 1, true );
+	int4 t13 = (int4)( 0, 1, false, false );
+	uint2 t14 = (uint2)(0, 1);
+	uint3 t15 = (uint3)( 0, 1u, true );
+	uint4 t16 = (uint4)( 0xFF, 1u, 2U, false );
+    
+    // global variable
+    const float g0 = 0.0f;
+
+    // precision
+    float p1 = 1.0f;
+    float p2 = 1.0f;
+    float p3 = 1.0f;
+
+    // format floats
+    float s1 = 1.0f;
+    float s2 = 1.f;     // 1.0f
+    float s3 = .0f;     // 0.0f
+    float s4 = 2e3;    // 2000.0f
+    float s5 = 3e7;    // 30000000.0f
+    float s6 = 4.7e-4f; // 0.00047f
+    
+    // format int
+    int i1 = 1; 
+    uint i2 = 1U; // unsigned 
+    uint i3 = 1u; // unsigned 
+    int i4 = 0xFF; // hexadecimal 
+    
+    // type casting
+    float c1 = (float)(1); // float to int
+    int c2 = (int)(1.0f);
+    float4 c3 = (float4)(1.0f); // float to float4
+    float4 c4 = (float4)( (float2)(0), (float2)(1.f));
+    mat3 c5 = (mat3){(float3)(0), (float3)(0), (float3)(0)};
+    mat4 c6 = (mat4)(0.0f);
+    
+    // vector component swizzle
+    float3 z1 = (float3)(1,2,3).xxz;
+    z1 = z1.zzx;
+    
+    // constructed vectors and matrices for testing
+    float2 V2 =(float2)(1.0f, 0.0f);
+    float3 V3 =(float3)(1.0f, 0.0f, 0.0f);
+    float4 V4 =(float4)(1.0f, 0.0f, 0.0f, 0.0f);
+
+    mat2 M2 = (mat2)(1.0f, 0.0f, 0.0f, 1.0f );
+	mat3 M3 = (mat3){{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+	mat4 M4 = (mat4)(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    
+    // common matrix operations
+    float2 op1 = GLSL_mul(V2, M2); // 2D vector transform
+    float2 op2 = GLSL_mul(GLSL_mul(V2, M2),  M2); // 2D vector transform x2
+    op2 = GLSL_mul(op2, M2); // another common transform operation
+
+    float3 op3 = GLSL_mul(V3, M3);  // 3D vector transform using 3x3 transform
+    float3 op4 = GLSL_mul(GLSL_mul(V3, M3), M3); // sequential, eg Model to World to Screen
+    op4 = GLSL_mul(op4, M3); // // another common transform operation
+//
+    float4 op5 = GLSL_mul(V4, M4);; // 3D point transorm using 4x4 matrix
+    float4 op6 = GLSL_mul(GLSL_mul(V4, M4), M4); // sequential, eg Model to World to Screen
+    op6 = GLSL_mul(op6, M4);
+
+    // common matrix functions
+    mat2 xf1 = GLSL_transpose(M2);
+    mat2 xf2 = GLSL_inverse(M2);	
+    mat3 xf3; GLSL_transpose(M3, &xf3);
+    mat3 xf4; GLSL_inverse(M3, xf4);
+    mat4 xf5 = GLSL_transpose(M4);
+    mat4 xf6 = GLSL_inverse(M4);	
+
+    // functions
+    float f1 = GLSL_radians(1.0f);
+    float f2 = GLSL_degrees(1.0f);
+    float f3 = GLSL_sin(1.0f);
+    float f4 = GLSL_cos(1.0f);
+    float f5 = GLSL_tan(1.0f);
+    float f6 = GLSL_asin(1.0f);
+    float f7 = GLSL_acos(1.0f);
+    float f8 = GLSL_atan(1.0f, 1.0f);
+    float f9 = GLSL_atan(1.0f);
+    float f10 = GLSL_sinh(1.0f);
+    float f11 = GLSL_cosh(1.0f);
+    float f12 = GLSL_tanh(1.0f);
+    float f13 = GLSL_asinh(1.0f);
+    float f14 = GLSL_acosh(1.0f);
+    float f15 = GLSL_atanh(0.5f);
+    float f16 = GLSL_pow(1.0f, 1.0f);
+    float f17 = GLSL_exp(1.0f);
+    float f18 = GLSL_log(1.0f);
+    float f19 = GLSL_exp2(1.0f);
+    float f20 = GLSL_log2(1.0f);
+    float f21 = GLSL_sqrt(1.0f);
+    float f22 = GLSL_inversesqrt(1.0f);
+    float f23 = GLSL_abs(1.0f);
+    float f24 = GLSL_sign(1.0f);
+    float f25 = GLSL_floor(1.0f);
+    float f26 = GLSL_ceil(1.0f);
+    float f27 = GLSL_trunc(1.0f);
+    float f28 = GLSL_fract(1.0f);
+    float f29 = GLSL_mod(1.0f, 1.0f);
+    float f30 = GLSL_modf(1.0f, &f1);
+    float f31 = GLSL_min(1.0f, 1.0f);
+    float f32 = GLSL_max(1.0f, 1.0f);
+    float f33 = GLSL_clamp(1.0f, 0.0f, 1.0f);
+    float f34 = GLSL_mix(1.0f, 0.0f, 0.5f);
+    float f35 = GLSL_step(0.5f, 1.0f);
+    float f36 = GLSL_smoothstep(0.0f, 1.0f, 1.0f);	
+
+    float3 v3 = (float3)(0.1f,0.8f,0.1f);
+    float g1 = GLSL_length(v3);
+    float g2 = GLSL_distance(v3,v3);
+    float g3 = GLSL_dot(v3, v3);
+    float3  g4 = GLSL_cross(v3, v3);	
+    float3  g5 = GLSL_normalize(v3);
+    float3  g6 = GLSL_faceforward(v3, v3, v3);
+    float3  g7 = GLSL_reflect(v3, v3);
+    float3  g8 = GLSL_refract(v3, v3,1.33f);
+    
+    // function overloads
+    float2 o2 = GLSL_mix( (float2)(0.f), (float2)(1.f), 0.5f);
+    float3 o3 = GLSL_mix( (float3)(0.f), (float3)(1.f), 0.5f);
+    float4 o4 = GLSL_mix( (float4)(0.f), (float4)(1.f), 0.5f);
+    float4 o5 = GLSL_mix( (float4)(0.f), (float4)(1.f), (float4)(0.5f));
+
+    float2 o6 = GLSL_mod( (float2)(0.f), 1.0f);
+    float2 o7 = GLSL_mod( (float2)(0.f), (float2)(1.f));
+    float3 o8 = GLSL_mod( (float3)(0.f), 1.0f);
+    float3 o9 = GLSL_mod( (float3)(0.f), (float3)(1.f));
+
+    // dFdx(), dFdy(), fwidth() not supported in OpenCL. adding passthrough dummies
+    float3 d1 = GLSL_dFdx( (float3)(0.0f, 0.0f, 0.0f));
+    float3 d2 = GLSL_dFdy( (float3)(0.0f, 0.0f, 0.0f));
+    float3 d3 = GLSL_fwidth( (float3)(0.0f, 0.0f, 0.0f));
+
+    // TODO:
+    // To be implemented in glslHelpers.h   
+    // type isnan (type x)	
+    // type isinf (type x)	
+    // float intBitsToFloat (int v)	
+    // uint uintBitsToFloat (uint v)	
+    // int floatBitsToInt (float v)	
+    // uint floatBitsToUint (float v)	
+    // uint packSnorm2x16 (float2 v)	
+    // uint packUnorm2x16 (float2 v)	
+    // float2 unpackSnorm2x16 (uint p)	
+    // float2 unpackUnorm2x16 (uint p)	
+    // bvec lessThan (type x, type y)	
+    // bvec lessThanEqual (type x, type y)	
+    // bvec greaterThan (type x, type y)	
+    // bvec greaterThanEqual (type x, type y)	
+    // bvec equal (type x, type y)	
+    // bvec notEqual (type x, type y)	
+    // bool any (bvec x)	
+    // bool all (bvec x)	
+    // bvec not (bvec x)
+
+    // Output to screen
+    fragColor = (float4)(uv, 0.0f, 1.0f);
+// ---- SHADERTOY CODE END ----

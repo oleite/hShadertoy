@@ -1,5 +1,5 @@
 # Ignore everything by default
-*
+/*
 
 !.gitignore
 
@@ -10,6 +10,7 @@
 
 # Allow root README
 !README.md
+!pytest.ini
 
 # Ignore Python cache dirs inside allowed folders
 src/**/__pycache__/

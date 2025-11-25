@@ -1,0 +1,526 @@
+"""
+Simple Code Emitter - Generates OpenCL C from Transformed AST.
+
+This is a TEMPORARY emitter used for testing during Session 1-5.
+The full CodeGenerator will be rewritten in Session 6.
+
+Purpose:
+- Enable compilation testing of transformed AST
+- Verify transformations produce valid OpenCL
+- Simple, straightforward emission (no optimization)
+
+Design:
+- Visitor pattern over transformed AST
+- Generates formatted OpenCL C code
+- Maintains indentation for readability
+"""
+
+from typing import List
+from . import transformed_ast as IR
+
+
+class CodeEmitter:
+    """
+    Emits OpenCL C code from transformed AST.
+
+    This is a simple emitter for testing. The full CodeGenerator
+    in Session 6 will be more sophisticated.
+    """
+
+    def __init__(self, indent_size: int = 4):
+        """
+        Initialize emitter.
+
+        Args:
+            indent_size: Number of spaces per indentation level
+        """
+        self.indent_size = indent_size
+        self.indent_level = 0
+
+    def emit(self, node: IR.TransformedNode) -> str:
+        """
+        Emit OpenCL code for a transformed AST node.
+
+        Args:
+            node: Transformed AST node
+
+        Returns:
+            OpenCL C code string
+        """
+        # Dispatch to appropriate emit method
+        method_name = f'emit_{node.__class__.__name__}'
+        method = getattr(self, method_name, self.emit_generic)
+        return method(node)
+
+    def emit_generic(self, node: IR.TransformedNode) -> str:
+        """Fallback for unknown node types."""
+        raise NotImplementedError(
+            f"No emit method for {node.__class__.__name__}"
+        )
+
+    def indent(self) -> str:
+        """Get current indentation string."""
+        return ' ' * (self.indent_level * self.indent_size)
+
+    # ========================================================================
+    # Literals
+    # ========================================================================
+
+    def emit_FloatLiteral(self, node: IR.FloatLiteral) -> str:
+        """Emit float literal with 'f' suffix."""
+        return node.value
+
+    def emit_IntLiteral(self, node: IR.IntLiteral) -> str:
+        """Emit integer literal."""
+        return node.value
+
+    def emit_BoolLiteral(self, node: IR.BoolLiteral) -> str:
+        """Emit boolean literal."""
+        return 'true' if node.value else 'false'
+
+    # ========================================================================
+    # Identifiers
+    # ========================================================================
+
+    def emit_Identifier(self, node: IR.Identifier) -> str:
+        """Emit identifier (variable name)."""
+        return node.name
+
+    def emit_TypeName(self, node: IR.TypeName) -> str:
+        """Emit type name."""
+        return node.name
+
+    # ========================================================================
+    # Expressions
+    # ========================================================================
+
+    def emit_BinaryOp(self, node: IR.BinaryOp) -> str:
+        """Emit binary operation."""
+        left = self.emit(node.left)
+        right = self.emit(node.right)
+        return f"{left} {node.operator} {right}"
+
+    def emit_UnaryOp(self, node: IR.UnaryOp) -> str:
+        """Emit unary operation."""
+        operand = self.emit(node.operand)
+
+        # Handle prefix vs postfix for ++ and --
+        if node.operator in ['++', '--']:
+            # For now, assume prefix (will be refined in Session 6)
+            return f"{node.operator}{operand}"
+        else:
+            # Standard unary: -, +, !, ~
+            return f"{node.operator}{operand}"
+
+    def emit_ParenthesizedExpression(self, node: IR.ParenthesizedExpression) -> str:
+        """Emit parenthesized expression - always emit parentheses."""
+        inner = self.emit(node.expression)
+        return f"({inner})"
+
+    def emit_CallExpression(self, node: IR.CallExpression) -> str:
+        """Emit function call."""
+        args = ', '.join(self.emit(arg) for arg in node.arguments)
+        return f"{node.function}({args})"
+
+    def emit_TypeConstructor(self, node: IR.TypeConstructor) -> str:
+        """
+        Emit type constructor.
+
+        Special cases:
+        - Struct constructors: Use compound literal syntax { arg1, arg2, ... }
+        - mat3 full constructor: { (float3)(...), (float3)(...), (float3)(...) }
+        - Vector constructors: Use cast syntax (float2)(arg1, arg2)
+        """
+        # Check if this is a struct constructor (type_name not in standard type_map)
+        # Struct types don't use cast syntax, they use compound literal syntax
+        standard_types = {
+            'float', 'float2', 'float3', 'float4',
+            'int', 'int2', 'int3', 'int4',
+            'uint', 'uint2', 'uint3', 'uint4',
+            'matrix2x2', 'matrix3x3', 'matrix4x4'
+        }
+
+        if node.type_name not in standard_types:
+            # This is likely a struct constructor
+            # Emit as compound literal: { arg1, arg2, arg3 }
+            args = ', '.join(self.emit(arg) for arg in node.arguments)
+            return f"{{{args}}}"
+
+        # mat3 full constructor: { (float3)(...), (float3)(...), (float3)(...) }
+        # Note: mat3 is an array type, so use array initialization syntax
+        if node.type_name == 'mat3' and len(node.arguments) == 3:
+            # Check if all arguments are float3 constructors
+            all_float3 = all(
+                isinstance(arg, IR.TypeConstructor) and arg.type_name == 'float3'
+                for arg in node.arguments
+            )
+            if all_float3:
+                # Emit array initialization syntax (single braces)
+                cols = ', '.join(self.emit(arg) for arg in node.arguments)
+                return f"{{{cols}}}"
+
+        # Standard cast syntax for vectors and standard types
+        args = ', '.join(self.emit(arg) for arg in node.arguments)
+        return f"({node.type_name})({args})"
+
+    def emit_MemberAccess(self, node: IR.MemberAccess) -> str:
+        """Emit member access (swizzling)."""
+        base = self.emit(node.base)
+        return f"{base}.{node.member}"
+
+    def emit_ArrayAccess(self, node: IR.ArrayAccess) -> str:
+        """Emit array subscript."""
+        base = self.emit(node.base)
+        index = self.emit(node.index)
+        return f"{base}[{index}]"
+
+    def emit_TernaryOp(self, node: IR.TernaryOp) -> str:
+        """Emit ternary conditional."""
+        condition = self.emit(node.condition)
+        true_expr = self.emit(node.true_expr)
+        false_expr = self.emit(node.false_expr)
+        return f"{condition} ? {true_expr} : {false_expr}"
+
+    def emit_AssignmentOp(self, node: IR.AssignmentOp) -> str:
+        """Emit assignment."""
+        target = self.emit(node.target)
+        value = self.emit(node.value)
+        return f"{target} {node.operator} {value}"
+
+    # ========================================================================
+    # Statements
+    # ========================================================================
+
+    def emit_ExpressionStatement(self, node: IR.ExpressionStatement) -> str:
+        """Emit expression statement."""
+        expr = self.emit(node.expression)
+        return f"{self.indent()}{expr};\n"
+
+    def emit_Declaration(self, node: IR.Declaration) -> str:
+        """
+        Emit variable declaration.
+
+        Special handling for mat3:
+        - mat3 with diagonal/cast/mul initializers must split into declaration + call
+        """
+        # Check if this is a mat3 with special initializer that needs splitting
+        if node.type_name == 'mat3' and node.initializer:
+            if isinstance(node.initializer, IR.CallExpression):
+                func_name = node.initializer.function
+                # Functions that require out-parameter pattern for mat3
+                needs_split = (
+                    func_name.startswith('GLSL_mat3_diagonal') or
+                    func_name.startswith('GLSL_mat3_from_') or
+                    func_name == 'GLSL_transpose' or
+                    func_name == 'GLSL_inverse' or
+                    (func_name == 'GLSL_mul' and self._returns_mat3(node.initializer)) or
+                    func_name in self.mat3_return_functions  # User-defined mat3-returning functions
+                )
+
+                if needs_split:
+                    # Split into declaration + function call with out-param
+                    # Emit qualifiers if present
+                    qualifier_str = ' '.join(node.qualifiers) + ' ' if node.qualifiers else ''
+                    result = f"{self.indent()}{qualifier_str}{node.type_name} {node.name};\n"
+
+                    # Emit function call with out-parameter
+                    # Build argument list (original args + result parameter)
+                    arg_parts = [self.emit(arg) for arg in node.initializer.arguments]
+                    arg_parts.append(node.name)  # mat3 is array type, pass directly
+                    all_args = ', '.join(arg_parts)
+                    result += f"{self.indent()}{func_name}({all_args});\n"
+                    return result
+
+        # Standard declaration (all other cases)
+        # Emit qualifiers if present
+        qualifier_str = ' '.join(node.qualifiers) + ' ' if node.qualifiers else ''
+        result = f"{self.indent()}{qualifier_str}{node.type_name} {node.name}"
+        if node.initializer:
+            init = self.emit(node.initializer)
+            result += f" = {init}"
+        result += ";\n"
+        return result
+
+    def emit_DeclarationList(self, node: IR.DeclarationList) -> str:
+        """
+        Emit comma-separated variable declarations.
+
+        Examples:
+            float x, y, z;
+            int a = 10, b = 20;
+            float3 position, normal, tangent;
+            const float x = 1.0f, y = 2.0f;
+
+        Note: mat3 declarations with special initializers are NOT
+        supported in comma-separated form (they require splitting).
+        """
+        # Check for mat3 with special initializers - not supported in comma form
+        if node.type_name == 'mat3':
+            for decl in node.declarators:
+                if decl.initializer and isinstance(decl.initializer, IR.CallExpression):
+                    func_name = decl.initializer.function
+                    if (func_name.startswith('GLSL_mat3_diagonal') or
+                        func_name.startswith('GLSL_mat3_from_') or
+                        func_name == 'GLSL_transpose' or
+                        func_name == 'GLSL_inverse' or
+                        func_name == 'GLSL_mul'):
+                        raise ValueError(
+                            f"mat3 with special initializer ({func_name}) "
+                            "cannot be used in comma-separated declarations"
+                        )
+
+        # Build comma-separated list of declarators
+        declarator_parts = []
+        for decl in node.declarators:
+            part = decl.name
+            if decl.initializer:
+                init = self.emit(decl.initializer)
+                part += f" = {init}"
+            declarator_parts.append(part)
+
+        # Emit as single line: type name1, name2, name3;
+        # Emit qualifiers if present
+        qualifier_str = ' '.join(node.qualifiers) + ' ' if node.qualifiers else ''
+        result = f"{self.indent()}{qualifier_str}{node.type_name} {', '.join(declarator_parts)};\n"
+        return result
+
+    def _returns_mat3(self, call_node: IR.CallExpression) -> bool:
+        """
+        Check if a function call returns mat3 (requires out-parameter).
+
+        Args:
+            call_node: CallExpression node
+
+        Returns:
+            True if the call returns mat3
+        """
+        result_type = self._get_node_type(call_node)
+        return result_type == 'mat3'
+
+    def _is_mat3_mul(self, call_node: IR.CallExpression) -> bool:
+        """
+        Check if a GLSL_mul call involves mat3 (requires out-parameter).
+
+        Args:
+            call_node: CallExpression node for GLSL_mul
+
+        Returns:
+            True if this is a mat3*mat3 multiplication
+        """
+        if len(call_node.arguments) >= 2:
+            first_arg = call_node.arguments[0]
+            second_arg = call_node.arguments[1]
+
+            # Check if either argument is mat3
+            first_type = self._get_node_type(first_arg)
+            second_type = self._get_node_type(second_arg)
+
+            # mat3 * mat3 requires out-parameter
+            return first_type == 'mat3' and second_type == 'mat3'
+
+        return False
+
+    def _get_node_type(self, node: IR.TransformedNode) -> str:
+        """
+        Get the type name of a node for emission.
+
+        Args:
+            node: Transformed AST node
+
+        Returns:
+            Type name string (e.g., 'mat3', 'float3')
+        """
+        if hasattr(node, 'glsl_type') and node.glsl_type:
+            if hasattr(node.glsl_type, 'name'):
+                # Only use .name if it's not None
+                if node.glsl_type.name is not None:
+                    return node.glsl_type.name
+                # Fall through to str() if .name is None
+
+            # Use GLSLType.__str__() representation
+            type_str = str(node.glsl_type)
+            if type_str and not type_str.startswith('<'):
+                return type_str
+
+        return None
+
+    def emit_ReturnStatement(self, node: IR.ReturnStatement) -> str:
+        """Emit return statement."""
+        if node.value:
+            value = self.emit(node.value)
+            return f"{self.indent()}return {value};\n"
+        else:
+            return f"{self.indent()}return;\n"
+
+    def emit_IfStatement(self, node: IR.IfStatement) -> str:
+        """Emit if statement."""
+        condition = self.emit(node.condition)
+        result = f"{self.indent()}if ({condition}) "
+
+        # Then block
+        then_code = self.emit(node.then_block)
+        result += then_code
+
+        # Else block
+        if node.else_block:
+            result += f"{self.indent()}else "
+            else_code = self.emit(node.else_block)
+            result += else_code
+
+        return result
+
+    def emit_ForStatement(self, node: IR.ForStatement) -> str:
+        """Emit for loop."""
+        # Init
+        init = ""
+        if node.init:
+            if isinstance(node.init, IR.Declaration):
+                # Declaration: emit without newline
+                init = f"{node.init.type_name} {node.init.name}"
+                if node.init.initializer:
+                    init += f" = {self.emit(node.init.initializer)}"
+            elif isinstance(node.init, IR.DeclarationList):
+                # DeclarationList: emit comma-separated declarations without newline
+                declarator_parts = []
+                for decl in node.init.declarators:
+                    part = decl.name
+                    if decl.initializer:
+                        init_expr = self.emit(decl.initializer)
+                        part += f" = {init_expr}"
+                    declarator_parts.append(part)
+                init = f"{node.init.type_name} {', '.join(declarator_parts)}"
+            else:
+                init = self.emit(node.init)
+
+        # Condition
+        condition = self.emit(node.condition) if node.condition else ""
+
+        # Update
+        update = self.emit(node.update) if node.update else ""
+
+        result = f"{self.indent()}for ({init}; {condition}; {update}) "
+
+        # Body
+        body_code = self.emit(node.body)
+        result += body_code
+
+        return result
+
+    def emit_WhileStatement(self, node: IR.WhileStatement) -> str:
+        """Emit while loop."""
+        condition = self.emit(node.condition)
+        result = f"{self.indent()}while ({condition}) "
+
+        # Body
+        body_code = self.emit(node.body)
+        result += body_code
+
+        return result
+
+    def emit_CompoundStatement(self, node: IR.CompoundStatement) -> str:
+        """Emit block statement."""
+        result = "{\n"
+        self.indent_level += 1
+
+        for stmt in node.statements:
+            result += self.emit(stmt)
+
+        self.indent_level -= 1
+        result += f"{self.indent()}}}\n"
+
+        return result
+
+    # ========================================================================
+    # Structs
+    # ========================================================================
+
+    def emit_StructField(self, node: IR.StructField) -> str:
+        """
+        Emit struct field declaration.
+
+        Handles comma-separated field names:
+        - Single field: float3 pos;
+        - Multiple fields: float t, d;
+        """
+        # Build field declaration with proper indentation
+        field_names = ', '.join(node.names)
+        return f"{self.indent()}{node.type_name} {field_names};\n"
+
+    def emit_StructDefinition(self, node: IR.StructDefinition) -> str:
+        """
+        Emit struct definition.
+
+        GLSL:
+            struct Geo {
+                vec3 pos;
+                vec3 scale;
+                vec3 rotation;
+            };
+
+        OpenCL:
+            typedef struct {
+                float3 pos;
+                float3 scale;
+                float3 rotation;
+            } Geo;
+        """
+        result = "typedef struct {\n"
+        self.indent_level += 1
+
+        # Emit all fields
+        for field in node.fields:
+            result += self.emit(field)
+
+        self.indent_level -= 1
+        result += f"}} {node.name};\n"
+
+        return result
+
+    # ========================================================================
+    # Functions
+    # ========================================================================
+
+    def emit_Parameter(self, node: IR.Parameter) -> str:
+        """Emit function parameter with pointer syntax if needed."""
+        parts = []
+
+        # Qualifiers
+        if node.qualifiers:
+            parts.extend(node.qualifiers)
+
+        # Type with optional pointer
+        if node.is_pointer:
+            parts.append(node.type_name + '*')
+        else:
+            parts.append(node.type_name)
+
+        # Name
+        parts.append(node.name)
+
+        return ' '.join(parts)
+
+    def emit_FunctionDefinition(self, node: IR.FunctionDefinition) -> str:
+        """Emit function definition."""
+        # Signature
+        params = ', '.join(self.emit(p) for p in node.parameters)
+        result = f"{node.return_type} {node.name}({params}) "
+
+        # Body
+        body = self.emit(node.body)
+        result += body
+
+        return result
+
+    # ========================================================================
+    # Top-Level
+    # ========================================================================
+
+    def emit_TranslationUnit(self, node: IR.TranslationUnit) -> str:
+        """Emit translation unit (entire program)."""
+        result = ""
+
+        for decl in node.declarations:
+            result += self.emit(decl)
+            result += "\n"  # Blank line between top-level declarations
+
+        return result

@@ -1,0 +1,1 @@
+float foobar = 1.0f;
