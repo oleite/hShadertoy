@@ -527,7 +527,7 @@ Transpiled kernel code should look like this: `tests/shaders/matrix_target.kerne
     float4 V4 =(float4)(1.0f, 0.0f, 0.0f, 0.0f);
 
     mat2 M2 = (mat2)(1.0f, 0.0f, 0.0f, 1.0f );
-	mat3 M3 = (mat3){{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+	mat3 M3 = (mat3){ {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} };
 	mat4 M4 = (mat4)(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
     
     // common matrix operations
