@@ -4,7 +4,7 @@ import shadertoy
 # basic example of using shadertoy API
 # requires API key, get yours from https://www.shadertoy.com/api
 
-api_key = os.environ['SHADERTOY_API_KEY']
+api_key = os.environ.get('SHADERTOY_API_KEY', '')
 app = shadertoy.App(api_key)
 
 # get shader by its unique id

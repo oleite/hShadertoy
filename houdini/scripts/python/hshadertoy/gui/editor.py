@@ -316,7 +316,7 @@ class ShadertoyEditor(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.shader_data = None
-        self.api_key = os.environ['SHADERTOY_API_KEY']
+        self.api_key = os.environ.get('SHADERTOY_API_KEY', '')
         self.init_ui()
 
     def init_ui(self):
